@@ -198,11 +198,6 @@ def _expression_param(value):
     else:
         return lambda x: eval('{0}=={1}'.format(x, value.strip('=')))
 
-def _int_param(value):
-    try:
-        return int(value)
-    except:
-        o.error('invalid integer: {0}'.format(value))
 
 def _generate_list_sorters(pattern = 'l'):
     '''
@@ -282,9 +277,12 @@ def _generate_list_sorters(pattern = 'l'):
 
 def main():
     o = argparse.ArgumentParser(description=long_description)
+    o.add_argument('keywords', nargs='+', action='store',
+                   help='Keywords to search')
     o.add_argument('--list-genres', dest='do_list_genres', action='store_true',
                  default=False, help='list available genres and exit')
     o.add_argument('-n', '--limit', dest='limit', action='store',
+                 type=int,
                  default=0, help='maximum number of stations.')
     o.add_argument('-r', '--random', dest='random', action='store_true',
                  default=False, help='sort stations randomly unless --sort is given.')
@@ -335,10 +333,9 @@ def main():
                      'order, "n<integer>" to truncate list.'))
     
     args = o.parse_args()
-    options = args
 
     try:
-        if options.do_list_genres:
+        if args.do_list_genres:
             genres = get_genres()
             print('\n'.join(genres))
             if genres:
@@ -346,28 +343,28 @@ def main():
             else:
                 sys.exit(4)
 
-        p_keywords = args
-        p_verbose = options.verbose
-        p_random = options.random
-        p_genre = options.genre
-        p_station = options.station
-        p_song = options.song
-        p_sort_rules = options.sort_rules
-        p_limit = _int_param(options.limit)
-        p_bitrate = _expression_param(options.bitrate)
-        p_listeners = _expression_param(options.listeners)
+        p_keywords = args.keywords
+        p_verbose = args.verbose
+        p_random = args.random
+        p_genre = args.genre
+        p_station = args.station
+        p_song = args.song
+        p_sort_rules = args.sort_rules
+        p_limit = args.limit
+        p_bitrate = _expression_param(args.bitrate)
+        p_listeners = _expression_param(args.listeners)
 
         p_format = '%u'
         if p_verbose:
             p_format = '%s [%bkbps %t]\\n\\t%u\\n\\t%g, %l listeners\\n\\tNow playing: %p\\n'
-        if options.format:
-            p_format = options.format
+        if args.format:
+            p_format = args.format
             
         p_mime_type = ''
-        if options.codec:
-            if options.codec.strip('"') not in ('mpeg', 'aacp'):
+        if args.codec:
+            if args.codec.strip('"') not in ('mpeg', 'aacp'):
                 o.error('CODEC must be "mpeg", "aacp" or none')
-            p_mime_type = 'audio/' + options.codec.strip('"')
+            p_mime_type = 'audio/' + args.codec.strip('"')
 
         sorters, sorters_description = _generate_list_sorters(p_sort_rules)
         if sorters:
@@ -381,25 +378,20 @@ def main():
             print('   Genres: {0}'.format(', '.join(p_genre)))
             print('  Playing: {0}'.format(', '.join(p_song)))
             print(' Stations: {0}'.format(', '.join(p_station)))
-            bitrate_str = ''
-            if options.bitrate:
-                bitrate_str = options.bitrate
+            bitrate_str = args.bitrate_str or ''
             print('  Bitrate: {0}'.format(bitrate_str))
-            listeners_str = ''
-            if options.listeners:
-                listeners_str = options.listeners
+            listeners_str = args.listeners or ''
             print('Listeners: {0}'.format(listeners_str))
-            print('     Type: {0}'.format(options.codec))
-            order_str = 'by no listeners'
+            print('     Type: {0}'.format(args.codec))
             if p_random:
                 order_str = 'random'
-            if p_sort_rules:
+            elif p_sort_rules:
                 order_str = 'by sorters'
+            else:
+                order_str = 'by no listeners'
             print('    Order: {0}'.format(order_str))
             print('   Sorter: {0}'.format(' | '.join(sorters_description)))
-            limit_str = ''
-            if p_limit > 0:
-                limit_str = str(p_limit)
+            limit_str = str(p_limit) or ''
             print('    Limit: {0}'.format(limit_str))
             print('   Format: {0}'.format(p_format))
             print('')
