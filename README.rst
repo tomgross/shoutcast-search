@@ -1,5 +1,6 @@
-shoutcast-search 0.4.1
-========================
+shoutcast-search 0.5
+====================
+
 shoutcast-search searches shoutcast.com for radio stations based on
 criteria given on the command line. The application can for example
 be used to automatically start a random radio station at startup or
@@ -9,6 +10,7 @@ See documentation.md for a complete description.
 
 Example
 -------
+
 The following starts my day: launch vlc with a random station playing
 Chill with reasonable technical (128+ kbps) and musical (some
 listeners) quality.
@@ -23,34 +25,27 @@ Requirements
 
 Installation
 ------------
+
 python 3 or higher is required to run the application. You can simply
-copy the program to any directory and invoke it by
+install the program with pip: ::
 
-    $ python shoutcast-search
+    $ pip install shoutcast_search
 
-On *nix, you can install it using make. Edit config.mk to configure make.
-Next, as root:
-
-    # make install
-
-    
 Running shoutcast-search
 ------------------------
-Using the python interpreter manually:
-
-    $ python shoutcast-search
-
-or after installation on *nix:
+Using the command. ::
 
     $ shoutcast-search
 
-For more information on usage see the man page shoutcast-search(1) or:
+For more information on usage see: ::
 
-    $ [python ] shoutcast-search --help
+    $ shoutcast-search --help
 
     
 Changes
 -------
+0.5 (unreleased):
+
 0.4.1 (2010-11-04):
     migration from python2 to python 3
 
