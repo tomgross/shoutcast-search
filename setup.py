@@ -18,5 +18,5 @@ setup(
         'License :: OSI Approved :: GNU General Public License (GPL)',
         'Programming Language :: Python',
         ],
-    entry_points = {'console_scripts':['shoutcast-search=shoutcast_search:main']},
+    entry_points = {'console_scripts':['shoutcast-search=shoutcast_search.shoutcast_search:main']},
     )

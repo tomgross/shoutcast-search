@@ -20,7 +20,7 @@
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-import optparse
+import argparse
 import re
 import random
 import sys
@@ -162,11 +162,10 @@ def search(search = [], station = [], genre = [], song = [], bitrate_fn = lambda
     return results
 
 # XXX use distribute ones
-version = '0.4.1'
 long_description = 'XXX'
     
 def _station_text(station_info, format):
-    url = scs.url_by_id(station_info['id'])
+    url = url_by_id(station_info['id'])
 
     replacements = {'%g': station_info['genre'],
                     '%p': station_info['ct'],
@@ -282,47 +281,65 @@ def _generate_list_sorters(pattern = 'l'):
 
 
 def main():
-    o = optparse.OptionParser(usage = "%prog [options] [keywords] - shoutcast search",
-                              version="%prog 0.4.1",
-                              description = description)
-    o.add_option('', '--list-genres', dest='do_list_genres', action='store_true',
+    o = argparse.ArgumentParser(description=long_description)
+    o.add_argument('--list-genres', dest='do_list_genres', action='store_true',
                  default=False, help='list available genres and exit')
-    o.add_option('-n', '--limit', dest='limit', action='store',
+    o.add_argument('-n', '--limit', dest='limit', action='store',
                  default=0, help='maximum number of stations.')
-    o.add_option('-r', '--random', dest='random', action='store_true',
+    o.add_argument('-r', '--random', dest='random', action='store_true',
                  default=False, help='sort stations randomly unless --sort is given.')
-    o.add_option('-v', '--verbose', dest='verbose', action='store_true',
+    o.add_argument('-v', '--verbose', dest='verbose', action='store_true',
                  default=False, help='verbose output, useful for getting search right.')
-    fmt = optparse.OptionGroup(o, 'Format', 'Specifies how the found stations should be printed. Codes: %u - url, %g - genre, %p - current song, %s - station name, %b - bitrate, %l - number of listeners, %t - MIME / codec, %% - %, \n - newline, \t - tab')
-    fmt.add_option('-f', '--format', dest='format', action='store',
+    fmt = o.add_argument_group('Format',
+            ('Specifies how the found stations should be printed. Codes: '
+             '%u - url, %g - genre, %p - current song, %s - station name, '
+             '%b - bitrate, %l - number of listeners, %t - MIME / codec, '
+             '%% - %, \n - newline, \t - tab'))
+    fmt.add_argument('-f', '--format', dest='format', action='store',
                  default='', help='results formatting.')
-    o.add_option_group(fmt)
-    p = optparse.OptionGroup(o, 'Criteria')
-    p.add_option('-g', '--genre', dest='genre', action='append',
+    o.add_argument_group(fmt)
+    p = o.add_argument_group('Criteria')
+    p.add_argument('-g', '--genre', dest='genre', action='append',
                  default=[], help='genre, e.g. \'-g Ambient\'.')
-    p.add_option('-p', '--playing', dest='song', action='append',
-                 default=[], help='currently played song / artist, e.g. \'-p Shantel\'.')
-    p.add_option('-s', '--station', dest='station', action='append',
+    p.add_argument('-p', '--playing', dest='song', action='append',
+                 default=[],
+                 help='currently played song / artist, e.g. \'-p Shantel\'.')
+    p.add_argument('-s', '--station', dest='station', action='append',
                  default=[], help='station name, e.g. \'-s "Groove Salad"\'.')
-    o.add_option_group(p)                         
-    f = optparse.OptionGroup(o, 'Filters', 'Filter the search results. These can NOT be used alone, e.g. to search for all stations with no listeners. If no criteria or keywords are given, the Top500 stations are used.')
-    f.add_option('-b', '--bitrate', dest='bitrate', action='store',
-                 default='', help='bitrate (kbps), [=><]NNN, e.g. \'-b "=128"\' for 128kbps.')
-    f.add_option('-l', '--listeners', dest='listeners', action='store',
+    f = o.add_argument_group('Filters',
+            ('Filter the search results. These can NOT be used alone, e.g. '
+             'to search for all stations with no listeners. If no criteria '
+             'or keywords are given, the Top500 stations are used.'))
+    f.add_argument('-b', '--bitrate', dest='bitrate', action='store',
+                 default='',
+                 help='bitrate (kbps), [=><]NNN, e.g. \'-b "=128"\' for 128kbps.')
+    f.add_argument('-l', '--listeners', dest='listeners', action='store',
                  default='', help='number of listeners, [=><]NNN, e.g. \'-l ">500"\' for more than 500 listeners.')
-    f.add_option('-t', '--type', dest='codec', action='store',
+    f.add_argument('-t', '--type', dest='codec', action='store',
                  default='', help='"mpeg" for MP3, "aacp" for aacPlus.')
-    o.add_option_group(f)
-    s = optparse.OptionGroup(o, 'Sorters', 'Manipulate the order of the returned list. The list can be sorted by number of listeners (l) and bitrate (b), it can be randomized (r) and it can be truncated (n), i.e. shortened to a specified amount of stations. Sorting is performed in written order, for example "ln20r" sorts the list by number of listeners, trunkates it to twenty stations and then randomizes it, giving the top twenty random stations matching the search. ^ is used to set sort order to ascending for l and b. The default sort order is reset to descending for each new sorter. Specifying sorters void the "-r" option.')
-    s.add_option('', '--sort', dest='sort_rules', action='store',
-                 default='', help='rules for manipulating the order of the list. "l" for number of listeners, "b" for bitrate, "r" to randomize order, "n<integer>" to truncate list.')
-    o.add_option_group(s)
+    s = o.add_argument_group('Sorters',
+            ('Manipulate the order of the returned list. The list can be '
+             'sorted by number of listeners (l) and bitrate (b), it can be '
+             'randomized (r) and it can be truncated (n), i.e. shortened to '
+             'a specified amount of stations. Sorting is performed in '
+             'written order, for example "ln20r" sorts the list by number of '
+             'listeners, trunkates it to twenty stations and then randomizes '
+             'it, giving the top twenty random stations matching the search. '
+             '^ is used to set sort order to ascending for l and b. The '
+             'default sort order is reset to descending for each new sorter. '
+             'Specifying sorters void the "-r" option.'))
+    s.add_argument('--sort', dest='sort_rules', action='store',
+                 default='', help=(
+                     'rules for manipulating the order of the list. "l" for '
+                     'number of listeners, "b" for bitrate, "r" to randomize '
+                     'order, "n<integer>" to truncate list.'))
     
-    (options, args) = o.parse_args()
+    args = o.parse_args()
+    options = args
 
     try:
         if options.do_list_genres:
-            genres = scs.get_genres()
+            genres = get_genres()
             print('\n'.join(genres))
             if genres:
                 sys.exit(0)
@@ -387,7 +404,7 @@ def main():
             print('   Format: {0}'.format(p_format))
             print('')
 
-        results = scs.search(p_keywords, p_station, p_genre, p_song, p_bitrate, p_listeners, p_mime_type, p_limit, p_random, sorters)
+        results = search(p_keywords, p_station, p_genre, p_song, p_bitrate, p_listeners, p_mime_type, p_limit, p_random, sorters)
             
         print('\n'.join(_station_text(el, p_format) for el in results))
         if p_verbose:
