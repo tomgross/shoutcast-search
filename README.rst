@@ -13,7 +13,7 @@ Example
 
 The following starts my day: launch vlc with a random station playing
 Chill with reasonable technical (128+ kbps) and musical (some
-listeners) quality.
+listeners) quality. ::
 
     $ shoutcast-search -n 1 -g chill -l ">50" -b ">127" -r | xargs vlc 
 
@@ -45,6 +45,8 @@ For more information on usage see: ::
 Changes
 -------
 0.5 (unreleased):
+    use argparse module instead of optparse
+    made compatible with pip and use entry-point for console script
 
 0.4.1 (2010-11-04):
     migration from python2 to python 3
