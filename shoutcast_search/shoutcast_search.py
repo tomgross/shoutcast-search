@@ -28,6 +28,7 @@ import urllib.request, urllib.parse, urllib.error
 from html.entities import name2codepoint
 import xml.etree.ElementTree as ET
 
+
 def _from_UTF_8(inbytes):
     return str(inbytes, 'UTF-8')
 
@@ -41,12 +42,6 @@ def _build_search_url(params):
     params_str = urllib.parse.urlencode(params)
     return baseurl + params_str
 
-def _decode_entities(s):
-    '''
-    Return string with converted htmlentities, e.g. &auml;
-      s - string to convert
-    '''
-    return re.sub('&(%s);'% ('|'.join(name2codepoint)), lambda m: chr(name2codepoint[m.group(1)]), s)
 
 def _retrieve_search_results(params):
     '''
@@ -59,23 +54,9 @@ def _retrieve_search_results(params):
         'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_6_8) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/21.0.1200.0 Iron/21.0.1200.0 Safari/537.1')
     content = _from_UTF_8(urllib.request.urlopen(req).read())
 
-    lp = re.compile('<station ')
-    p = re.compile(' (.*?)=\"(.*?)\"')
-    res = [p.findall(c) for c in content.split('\n') if lp.match(c)]
+    root = ET.fromstring(content)
+    return [station.attrib for station in root.iter('station')]
 
-    def _info_to_dict(row):
-        d = {}
-        for el in row:
-            d[el[0]] = el[1]
-        d['name'] = _decode_entities(d['name'])
-        d['genre'] = _decode_entities(d['genre'])
-        d['ct'] = _decode_entities(d['ct'])
-        d['lc'] = int(d['lc'])
-        d['br'] = int(d['br'])
-        d['id'] = int(d['id'])
-        return d
-    
-    return [_info_to_dict(r) for r in res]        
 
 def url_by_id(index):
     '''
