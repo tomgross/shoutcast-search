@@ -64,13 +64,19 @@ def url_by_id(index):
     '''
     return 'http://yp.shoutcast.com/sbin/tunein-station.pls?id={0}'.format(index)
 
+
 def get_genres():
     '''
     Returns a list of genres (listed by the shoutcast web service).
     Raises urllib2.URLError if network communication fails
     '''
-    content = _from_UTF_8(urllib.request.urlopen('http://yp.shoutcast.com/sbin/newxml.phtml').read())
-    return list(re.compile('<genre name="(.*?)"').findall(content))
+    req = urllib.request.Request('http://yp.shoutcast.com/sbin/newxml.phtml')
+    # Fake real user agent
+    req.add_header('User-Agent',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_6_8) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/21.0.1200.0 Iron/21.0.1200.0 Safari/537.1')
+    content = _from_UTF_8(urllib.request.urlopen(req).read())
+    root = ET.fromstring(content)
+    return [genre.attrib['name'] for genre in root.iter('genre')]
 
 def search(search = [], station = [], genre = [], song = [], bitrate_fn = lambda x: True, listeners_fn = lambda x: True, mime_type = '', limit = 0, randomize = False, sorters = []):
     '''
@@ -172,11 +178,12 @@ def _fail_exit(code, msg):
     sys.stderr.write("{0}: {1}\n".format(sys.argv[0], msg))
     sys.exit(code)
 
-def _expression_param(value):
+
+def _expression_param(value, argparser):
     if not value:
         return lambda x:True
     if not re.compile('^[=><]?\d+$').match(value):
-        o.error('invalid expression: {0}'.format(value))
+        argparser.error('invalid expression: {0}'.format(value))
             
     if value[0] in ('><'):
         return lambda x: eval('{0}{1}'.format(x, value))
@@ -262,7 +269,7 @@ def _generate_list_sorters(pattern = 'l'):
 
 def main():
     o = argparse.ArgumentParser(description=long_description)
-    o.add_argument('keywords', nargs='+', action='store',
+    o.add_argument('keywords', nargs='*', action='store',
                    help='Keywords to search')
     o.add_argument('--list-genres', dest='do_list_genres', action='store_true',
                  default=False, help='list available genres and exit')
@@ -336,8 +343,8 @@ def main():
         p_song = args.song
         p_sort_rules = args.sort_rules
         p_limit = args.limit
-        p_bitrate = _expression_param(args.bitrate)
-        p_listeners = _expression_param(args.listeners)
+        p_bitrate = _expression_param(args.bitrate, o)
+        p_listeners = _expression_param(args.listeners, o)
 
         p_format = '%u'
         if p_verbose:
@@ -363,7 +370,7 @@ def main():
             print('   Genres: {0}'.format(', '.join(p_genre)))
             print('  Playing: {0}'.format(', '.join(p_song)))
             print(' Stations: {0}'.format(', '.join(p_station)))
-            bitrate_str = args.bitrate_str or ''
+            bitrate_str = args.bitrate or ''
             print('  Bitrate: {0}'.format(bitrate_str))
             listeners_str = args.listeners or ''
             print('Listeners: {0}'.format(listeners_str))
