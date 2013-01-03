@@ -25,7 +25,6 @@ import re
 import random
 import sys
 import urllib.request, urllib.parse, urllib.error
-from html.entities import name2codepoint
 import xml.etree.ElementTree as ET
 
 
@@ -38,9 +37,8 @@ def _build_search_url(params):
     Return URL to search web service with appropriately encoded parameters.
       params - See urllib.urlencode
     '''
-    baseurl = 'http://yp.shoutcast.com/sbin/newxml.phtml?'
-    params_str = urllib.parse.urlencode(params)
-    return baseurl + params_str
+    return 'http://yp.shoutcast.com/sbin/newxml.phtml?{0}'.format(
+        urllib.parse.urlencode(params))
 
 
 def _retrieve_search_results(params):
@@ -77,6 +75,7 @@ def get_genres():
     content = _from_UTF_8(urllib.request.urlopen(req).read())
     root = ET.fromstring(content)
     return [genre.attrib['name'] for genre in root.iter('genre')]
+
 
 def search(search = [], station = [], genre = [], song = [], bitrate_fn = lambda x: True, listeners_fn = lambda x: True, mime_type = '', limit = 0, randomize = False, sorters = []):
     '''
@@ -191,7 +190,7 @@ def _expression_param(value, argparser):
         return lambda x: eval('{0}=={1}'.format(x, value.strip('=')))
 
 
-def _generate_list_sorters(pattern = 'l'):
+def _generate_list_sorters(pattern='l', argparser=None):
     '''
     We want to manipulate the list by pruning and sorting. Pattern contains a string that defines how
     The pattern is:
@@ -222,6 +221,8 @@ def _generate_list_sorters(pattern = 'l'):
         random.shuffle(list)
         return list
         
+    if argparser is None:
+        argparser = argparse.ArgumentParser()
     sorters = []
     sorters_description = []
     sort_descending = True
@@ -253,12 +254,12 @@ def _generate_list_sorters(pattern = 'l'):
             index -= 1
                     
             if not number:
-                o.error('missing number for sorter n in "{0}"'.format(pattern))
+                argparser.error('missing number for sorter n in "{0}"'.format(pattern))
             value = int(number)
             sorters.append(lambda list: list[:value])
             sorters_description.append('top {0}'.format(value))
         else:
-            o.error('invalid sorter: {0}'.format(char))
+            argparser.error('invalid sorter: {0}'.format(char))
         
         if char != '^':
             sort_descending = True # Reset sort order
@@ -358,7 +359,7 @@ def main():
                 o.error('CODEC must be "mpeg", "aacp" or none')
             p_mime_type = 'audio/' + args.codec.strip('"')
 
-        sorters, sorters_description = _generate_list_sorters(p_sort_rules)
+        sorters, sorters_description = _generate_list_sorters(p_sort_rules, o)
         if sorters:
             p_random = False #Start with sorted list when using sorters
 
