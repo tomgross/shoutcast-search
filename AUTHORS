@@ -3,3 +3,6 @@ Author of shoutcast-search:
 
 Migration from python2 to python3:
     Christopher Brannon <chris AT the-brannons DOT com> 2010
+
+Stability fixes and cleanups
+    Tom Gross <itconsense AT gmail DOT com> 2013
