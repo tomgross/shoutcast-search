@@ -26,7 +26,7 @@ import random
 import sys
 import urllib.request, urllib.parse, urllib.error
 from html.entities import name2codepoint
-
+import xml.etree.ElementTree as ET
 
 def _from_UTF_8(inbytes):
     return str(inbytes, 'UTF-8')
@@ -53,7 +53,11 @@ def _retrieve_search_results(params):
     Perform search against shoutcast.com web service.
       params - See urllib.urlencode and http://forums.winamp.com/showthread.php?threadid=295638
     '''
-    content = _from_UTF_8(urllib.request.urlopen(_build_search_url(params)).read())
+    req = urllib.request.Request(_build_search_url(params))
+    # Fake real user agent
+    req.add_header('User-Agent',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_6_8) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/21.0.1200.0 Iron/21.0.1200.0 Safari/537.1')
+    content = _from_UTF_8(urllib.request.urlopen(req).read())
 
     lp = re.compile('<station ')
     p = re.compile(' (.*?)=\"(.*?)\"')
