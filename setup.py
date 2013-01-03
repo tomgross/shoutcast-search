@@ -19,4 +19,5 @@ setup(
         'Programming Language :: Python',
         ],
     entry_points = {'console_scripts':['shoutcast-search=shoutcast_search.shoutcast_search:main']},
+    test_suite = 'shoutcast_search.tests',
     )
