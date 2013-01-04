@@ -191,10 +191,12 @@ def _expression_param(value, argparser):
     if not re.compile('^[=><]?\d+$').match(value):
         argparser.error('invalid expression: {0}'.format(value))
             
-    if value[0] in ('><'):
-        return lambda x: eval('{0}{1}'.format(x, value))
+    if value[0] == '>':
+        return lambda x: int(x) > int(value.strip('>'))
+    elif value[0] == '<':
+        return lambda x: int(x) < int(value.strip('<'))
     else:
-        return lambda x: eval('{0}=={1}'.format(x, value.strip('=')))
+        return lambda x: int(x) == int(value.strip('='))
 
 
 def _generate_list_sorters(pattern='l', argparser=None):
