@@ -27,6 +27,7 @@ import sys
 import urllib.request, urllib.parse, urllib.error
 import xml.etree.ElementTree as ET
 
+import pkg_resources
 
 def _from_UTF_8(inbytes):
     return str(inbytes, 'UTF-8')
@@ -151,9 +152,15 @@ def search(search = [], station = [], genre = [], song = [], bitrate_fn = lambda
 
     return results
 
-# XXX use distribute ones
-long_description = 'XXX'
-    
+
+def get_egg_description():
+    dist = pkg_resources.get_distribution("shoutcast-search")
+    for line in dist.get_metadata(dist.PKG_INFO).splitlines():
+        if line.lower().startswith('description:'):
+            return line.split(':', 1)[1].strip()
+    return ''
+
+ 
 def _station_text(station_info, format):
     url = url_by_id(station_info['id'])
 
@@ -269,7 +276,7 @@ def _generate_list_sorters(pattern='l', argparser=None):
 
 
 def main():
-    o = argparse.ArgumentParser(description=long_description)
+    o = argparse.ArgumentParser(description=get_egg_description())
     o.add_argument('keywords', nargs='*', action='store',
                    help='Keywords to search')
     o.add_argument('--list-genres', dest='do_list_genres', action='store_true',
