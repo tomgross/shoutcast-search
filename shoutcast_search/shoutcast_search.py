@@ -266,15 +266,13 @@ def _generate_list_sorters(pattern='l', argparser=None):
         argparser = argparse.ArgumentParser()
     sorters = []
     sorters_description = []
-    sort_descending = True
 
     # I'd rather enumerate or something, but 'n' needs some special attention
     # Not very pretty, though
     index = 0
     while index < len(pattern):
         char = pattern[index]
-        if char == '^':
-            sort_descending = False
+        sort_descending = not char == '^'
         elif char == 'b':
             sorters.append(_create_sorter('br', sort_descending))
             sorters_description.append(_filter_description('bitrate',
