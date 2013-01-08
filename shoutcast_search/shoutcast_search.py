@@ -29,180 +29,21 @@ import urllib.parse
 import urllib.error
 import xml.etree.ElementTree as ET
 
-import pkg_resources
 
+
+# Utility methods
 
 def _from_UTF_8(inbytes):
     return str(inbytes, 'UTF-8')
 
 
-def _build_search_url(params):
-    '''
-    Return URL to search web service with appropriately encoded parameters.
-      params - See urllib.urlencode
-    '''
-    return 'http://yp.shoutcast.com/sbin/newxml.phtml?{0}'.format(
-        urllib.parse.urlencode(params))
-
-
-def _retrieve_search_results(params):
-    ''' Perform search against shoutcast.com web service.
-        params - See urllib.urlencode and
-                 http://forums.winamp.com/showthread.php?threadid=295638
-    '''
-    req = urllib.request.Request(_build_search_url(params))
-    # Fake real user agent
-    req.add_header('User-Agent',
-                   ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_6_8) '
-                    'AppleWebKit/537.1 (KHTML, like Gecko) '
-                    'Chrome/21.0.1200.0 Iron/21.0.1200.0 Safari/537.1'))
-    content = _from_UTF_8(urllib.request.urlopen(req).read())
-
-    root = ET.fromstring(content)
-    return [station.attrib for station in root.iter('station')]
-
-
-def url_by_id(index):
-    '''
-    Returns the stations URL based on its ID
-    '''
-    url = 'http://yp.shoutcast.com/sbin/tunein-station.pls?id={0}'
-    return url.format(index)
-
-
-def get_genres():
-    '''
-    Returns a list of genres (listed by the shoutcast web service).
-    Raises urllib2.URLError if network communication fails
-    '''
-    req = urllib.request.Request('http://yp.shoutcast.com/sbin/newxml.phtml')
-    # Fake real user agent
-    req.add_header('User-Agent',
-                   ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_6_8) '
-                    'AppleWebKit/537.1 (KHTML, like Gecko) '
-                    'Chrome/21.0.1200.0 Iron/21.0.1200.0 Safari/537.1'))
-    content = _from_UTF_8(urllib.request.urlopen(req).read())
-    root = ET.fromstring(content)
-    return [genre.attrib['name'] for genre in root.iter('genre')]
-
-
-def search(search=[], station=[], genre=[], song=[],
-           bitrate_fn=lambda x: True, listeners_fn=lambda x: True,
-           mime_type='', limit=0, randomize=False, sorters=[]):
-    ''' Search shoutcast.com for streams with given criteria.
-
-    See http://forums.winamp.com/showthread.php?threadid=295638 for details
-    and rules. Raises urllib2.URLError if network communication fails.
-      search - List of free-form keywords. Searches in station names, genres
-               and songs.
-      station - List of phrases to find in station names.
-      genre - List of phrases to find in genres.
-      song - List of phrases to find in "currently playing" string
-             e.g artist or song name.
-      bitrate_fn - function with bitrate as argument. Should return True
-                   if station is a keeper.
-      listeners_fn function with number of listeners as argument.
-                   Should return True if station is a keeper.
-      mime_type - filter stations by MIME type
-      limit - maximum number of stations returned. 0 means unlimited.
-      randomize - should results be returned in random order? True / False
-      sorters - a list of functions accepting the station list and returning
-                a modified one. Executed after randomization / sorting by
-                number of listeners.
-
-    Returns a list with one dict per station. Each dict contains:
-      'name' - station name
-      'mt' - mime type
-      'id' - station id (used in URL)
-      'br' - bitrate in kbps
-      'genre' - station genre(s)
-      'ct' - currently played track
-      'lc' - listener count
-    '''
-
-    opt_dict = {}
-    keywords = search + station + genre + song
-
-    if mime_type:
-        opt_dict['mt'] = mime_type
-
-    if not keywords:   # No content to search, use default
-        opt_dict['genre'] = 'Top500'
-
-# Perform search with empty keywords
-        results = _retrieve_search_results(opt_dict)
-    else:
-        # Find everything applicable and filter ourselves, since the API
-        # is limited.
-        # Not very elegant, and quite slow with big queries.
-        # No problem with normal use, though.
-        results = []
-        known_ids = []  # "cache" found station ids to make code easier below
-        for k in keywords:
-            opt_dict.update({'search': k})
-            results += [row for row in _retrieve_search_results(opt_dict)
-                        if row['id'] not in known_ids]
-            known_ids = [row['id'] for row in results]
-
-    # Filter for bitrate
-    results = [r for r in results if bitrate_fn(r['br'])]
-    # Filter by listeners
-    results = [r for r in results if listeners_fn(r['lc'])]
-
-    # Now filter all the stations we've got. AND all criteria. Not super fast,
-    # but OK for normal use
-    for s in station:
-        results = [r for r in results if s.upper() in r['name'].upper()]
-    for g in genre:
-        results = [r for r in results if g.upper() in r['genre'].upper()]
-    for s in song:
-        results = [r for r in results if s.upper() in r['ct'].upper()]
-    for k in keywords:
-        results = [r for r in results
-                   if k.upper() in '{0} {1} {2}'.format(r['name'], r['genre'],
-                                                        r['ct']).upper()]
-
-    if randomize:
-        random.shuffle(results)
-    else:
-        # Sort by listener count
-        results.sort(key=lambda x: int(x['lc']), reverse=True)
-
-    for m in sorters:
-        results = m(results)
-
-    if limit > 0:
-        results = results[:limit]
-
-    return results
-
-
 def get_egg_description():
+    import pkg_resources
     dist = pkg_resources.get_distribution("shoutcast-search")
     for line in dist.get_metadata(dist.PKG_INFO).splitlines():
         if line.lower().startswith('description:'):
             return line.split(':', 1)[1].strip()
-    return ''
-
-
-def _station_text(station_info, format):
-    url = url_by_id(station_info['id'])
-
-    replacements = {'%g': station_info['genre'],
-                    '%p': station_info['ct'],
-                    '%s': station_info['name'],
-                    '%b': station_info['br'],
-                    '%l': station_info['lc'],
-                    '%t': station_info['mt'],
-                    '%u': url,
-                    '%%': '%',
-                    '\\n': '\n',
-                    '\\t': '\t'}
-    resstr = format
-    for key, value in replacements.items():
-        resstr = resstr.replace(key, str(value))
-
-    return resstr
+    return ''  # pragma: no cover
 
 
 def _fail_exit(code, msg):
@@ -266,13 +107,15 @@ def _generate_list_sorters(pattern='l', argparser=None):
         argparser = argparse.ArgumentParser()
     sorters = []
     sorters_description = []
+    sort_descending = True
 
     # I'd rather enumerate or something, but 'n' needs some special attention
     # Not very pretty, though
     index = 0
     while index < len(pattern):
         char = pattern[index]
-        sort_descending = not char == '^'
+        if char == '^':
+            sort_descending = False
         elif char == 'b':
             sorters.append(_create_sorter('br', sort_descending))
             sorters_description.append(_filter_description('bitrate',
@@ -303,12 +146,188 @@ def _generate_list_sorters(pattern='l', argparser=None):
         else:
             argparser.error('invalid sorter: {0}'.format(char))
 
+        if char != '^':
+            sort_descending = True # Reset sort order
+
         index += 1
 
     return (sorters, sorters_description)
 
 
-def main():
+# Provider classes
+
+class Provider(object):
+    """ A online radio database provider """
+
+    search_url = ''
+    by_id_url = ''
+    genres_url = ''
+    extra_headers = {}
+
+    def _build_search_url(self, params):
+        '''
+        Return URL to search web service with appropriately encoded parameters.
+          params - See urllib.urlencode
+        '''
+        return self.search_url.format(urllib.parse.urlencode(params))
+
+    def get_search_results(self, params):
+        ''' Perform search against shoutcast.com web service.
+            params - See urllib.urlencode and
+                     http://forums.winamp.com/showthread.php?threadid=295638
+        '''
+        req = urllib.request.Request(self._build_search_url(params))
+        for key, val in self.extra_headers.items():
+            req.add_header(key, val)  # add extra header information
+        with urllib.request.urlopen(req) as resp:
+            content = _from_UTF_8(resp.read())
+
+        root = ET.fromstring(content)
+        return [station.attrib for station in root.iter('station')]
+
+    def url_by_id(self, index):
+        '''
+        Returns the stations URL based on its ID
+        '''
+        return self.by_id_url.format(index)
+
+    def get_genres(self):
+        '''
+        Returns a list of genres (listed by the shoutcast web service).
+        Raises urllib2.URLError if network communication fails
+        '''
+        req = urllib.request.Request(self.genres_url)
+        for key, val in self.extra_headers.items():
+            req.add_header(key, val)  # add extra header information
+        with urllib.request.urlopen(req) as resp:
+            content = _from_UTF_8(resp.read())
+        root = ET.fromstring(content)
+        return [genre.attrib['name'] for genre in root.iter('genre')]
+
+    def station_text(self, station_info, format):
+        url = self.url_by_id(station_info['id'])
+
+        replacements = {'%g': station_info['genre'],
+                        '%p': station_info['ct'],
+                        '%s': station_info['name'],
+                        '%b': station_info['br'],
+                        '%l': station_info['lc'],
+                        '%t': station_info['mt'],
+                        '%u': url,
+                        '%%': '%',
+                        '\\n': '\n',
+                        '\\t': '\t'}
+        resstr = format
+        for key, value in replacements.items():
+            resstr = resstr.replace(key, str(value))
+        return resstr
+
+class Shoutcast(Provider):
+    """ Shoutcast radio directory """
+
+    search_url = 'http://yp.shoutcast.com/sbin/newxml.phtml?{0}' 
+    by_id_url = 'http://yp.shoutcast.com/sbin/tunein-station.pls?id={0}'
+    genres_url = 'http://yp.shoutcast.com/sbin/newxml.phtml'
+
+    extra_headers = {'User-Agent':
+                     ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_6_8) '
+                      'AppleWebKit/537.1 (KHTML, like Gecko) '
+                      'Chrome/21.0.1200.0 Iron/21.0.1200.0 Safari/537.1')}
+
+
+
+def search(search=[], station=[], genre=[], song=[],
+           bitrate_fn=lambda x: True, listeners_fn=lambda x: True,
+           mime_type='', limit=0, randomize=False, sorters=[], provider=None):
+    ''' Search shoutcast.com for streams with given criteria.
+
+    See http://forums.winamp.com/showthread.php?threadid=295638 for details
+    and rules. Raises urllib2.URLError if network communication fails.
+      search - List of free-form keywords. Searches in station names, genres
+               and songs.
+      station - List of phrases to find in station names.
+      genre - List of phrases to find in genres.
+      song - List of phrases to find in "currently playing" string
+             e.g artist or song name.
+      bitrate_fn - function with bitrate as argument. Should return True
+                   if station is a keeper.
+      listeners_fn function with number of listeners as argument.
+                   Should return True if station is a keeper.
+      mime_type - filter stations by MIME type
+      limit - maximum number of stations returned. 0 means unlimited.
+      randomize - should results be returned in random order? True / False
+      sorters - a list of functions accepting the station list and returning
+                a modified one. Executed after randomization / sorting by
+                number of listeners.
+
+    Returns a list with one dict per station. Each dict contains:
+      'name' - station name
+      'mt' - mime type
+      'id' - station id (used in URL)
+      'br' - bitrate in kbps
+      'genre' - station genre(s)
+      'ct' - currently played track
+      'lc' - listener count
+    '''
+    assert provider is not None, 'Provider must be specified'
+    opt_dict = {}
+    keywords = search + station + genre + song
+
+    if mime_type:
+        opt_dict['mt'] = mime_type
+
+    if not keywords:   # No content to search, use default
+        opt_dict['genre'] = 'Top500'
+
+# Perform search with empty keywords
+        results = provider.get_search_results(opt_dict)
+    else:
+        # Find everything applicable and filter ourselves, since the API
+        # is limited.
+        # Not very elegant, and quite slow with big queries.
+        # No problem with normal use, though.
+        results = []
+        known_ids = []  # "cache" found station ids to make code easier below
+        for k in keywords:
+            opt_dict.update({'search': k})
+            results += [row for row in provider.get_search_results(opt_dict)
+                        if row['id'] not in known_ids]
+            known_ids = [row['id'] for row in results]
+
+    # Filter for bitrate
+    results = [r for r in results if bitrate_fn(r['br'])]
+    # Filter by listeners
+    results = [r for r in results if listeners_fn(r['lc'])]
+
+    # Now filter all the stations we've got. AND all criteria. Not super fast,
+    # but OK for normal use
+    for s in station:
+        results = [r for r in results if s.upper() in r['name'].upper()]
+    for g in genre:
+        results = [r for r in results if g.upper() in r['genre'].upper()]
+    for s in song:
+        results = [r for r in results if s.upper() in r['ct'].upper()]
+    for k in keywords:
+        results = [r for r in results
+                   if k.upper() in '{0} {1} {2}'.format(r['name'], r['genre'],
+                                                        r['ct']).upper()]
+
+    if randomize:
+        random.shuffle(results)
+    else:
+        # Sort by listener count
+        results.sort(key=lambda x: int(x['lc']), reverse=True)
+
+    for m in sorters:
+        results = m(results)
+
+    if limit > 0:
+        results = results[:limit]
+
+    return results
+
+
+def main(provider):
     o = argparse.ArgumentParser(description=get_egg_description())
     o.add_argument('keywords', nargs='*', action='store',
                    help='Keywords to search')
@@ -382,11 +401,11 @@ def main():
 
     try:
         if args.do_list_genres:
-            genres = get_genres()
+            genres = provider.get_genres()
             print('\n'.join(genres))
             if genres:
-                sys.exit(0)
-            else:
+                return
+            else:  # pragma: no cover
                 sys.exit(4)
 
         p_keywords = args.keywords
@@ -443,18 +462,20 @@ def main():
             print('')
 
         results = search(p_keywords, p_station, p_genre, p_song, p_bitrate,
-                         p_listeners, p_mime_type, p_limit, p_random, sorters)
+                         p_listeners, p_mime_type, p_limit, p_random, sorters,
+                         provider)
 
-        print('\n'.join(_station_text(el, p_format) for el in results))
+        print('\n'.join(provider.station_text(el, p_format) for el in results))
         if p_verbose:
             print('\n{0:d} station(s) found.'.format(len(results)))
         if not results:
             _fail_exit(4, 'no station found\n')
-    except urllib.error.URLError as e:
+    except urllib.error.URLError as e:  # pragma: no cover
         _fail_exit(1, 'network error: {0}'.format(e))
-    except Exception as e:
+    except Exception as e:  # pragma: no cover
         _fail_exit(3, 'unknown error: {0}'.format(e))
 
 
-if __name__ == '__main__':
-    main()
+if __name__ == '__main__':  # pragma: no cover
+    provider = Shoutcast()
+    main(provider)

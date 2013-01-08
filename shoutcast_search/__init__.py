@@ -21,11 +21,3 @@
 __version__ = '0.4.1'
 
 from . import shoutcast_search
-
-
-def main():
-    pass
-
-
-if __name__ == '__main__':
-    main()
