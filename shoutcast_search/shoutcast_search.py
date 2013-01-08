@@ -30,9 +30,7 @@ import urllib.error
 import xml.etree.ElementTree as ET
 
 
-
 # Utility methods
-
 def _from_UTF_8(inbytes):
     return str(inbytes, 'UTF-8')
 
@@ -147,7 +145,7 @@ def _generate_list_sorters(pattern='l', argparser=None):
             argparser.error('invalid sorter: {0}'.format(char))
 
         if char != '^':
-            sort_descending = True # Reset sort order
+            sort_descending = True  # Reset sort order
 
         index += 1
 
@@ -222,10 +220,11 @@ class Provider(object):
             resstr = resstr.replace(key, str(value))
         return resstr
 
+
 class Shoutcast(Provider):
     """ Shoutcast radio directory """
 
-    search_url = 'http://yp.shoutcast.com/sbin/newxml.phtml?{0}' 
+    search_url = 'http://yp.shoutcast.com/sbin/newxml.phtml?{0}'
     by_id_url = 'http://yp.shoutcast.com/sbin/tunein-station.pls?id={0}'
     genres_url = 'http://yp.shoutcast.com/sbin/newxml.phtml'
 
@@ -233,7 +232,6 @@ class Shoutcast(Provider):
                      ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_6_8) '
                       'AppleWebKit/537.1 (KHTML, like Gecko) '
                       'Chrome/21.0.1200.0 Iron/21.0.1200.0 Safari/537.1')}
-
 
 
 def search(search=[], station=[], genre=[], song=[],

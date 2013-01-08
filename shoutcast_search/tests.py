@@ -75,7 +75,8 @@ class UtilityTestCase(TestCase):
 
     def test_generate_list_sorters_l(self):
         sorters, sorters_description = _generate_list_sorters()
-        self.assertEqual(sorters[0]([{'lc': '1'}, {'lc': '2'}]), [{'lc': '2'}, {'lc': '1'}])
+        self.assertEqual(sorters[0]([{'lc': '1'}, {'lc': '2'}]),
+                         [{'lc': '2'}, {'lc': '1'}])
         self.assertEqual(sorters_description, ['listeners desc'])
 
     def test_generate_list_sorters_r(self):
@@ -141,6 +142,7 @@ class ProviderTestCase(TestCase):
         self.assertIn('Acid Jazz', provider.get_genres())
         self.assertEqual(len(provider.get_genres()), 19)
 
+
 class MainTestCase(TestCase):
 
     def test_main(self):
@@ -156,5 +158,3 @@ class MainTestCase(TestCase):
         sys.argv = ['shoutcast-search', '--list-genres']
         provider = TestProvider()
         main(provider)
-
-
