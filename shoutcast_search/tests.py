@@ -12,6 +12,7 @@ from shoutcast_search.shoutcast_search import get_egg_description
 from shoutcast_search.shoutcast_search import _generate_list_sorters
 from shoutcast_search.shoutcast_search import main
 from shoutcast_search.shoutcast_search import search
+from shoutcast_search.shoutcast_search import filter_results
 
 
 class DummyParser(object):
@@ -123,8 +124,51 @@ class UtilityTestCase(TestCase):
     def test_search_mt(self):
         provider = TestProvider()
         provider.get_search_results = lambda opt_dict: opt_dict
-        print(search(mime_type='ogg', provider=provider))
+        self.assertEqual(search(mime_type='ogg', provider=provider),
+                         {'mt': 'ogg', 'genre': 'Top500'})
 
+    def test_search_nokeyword(self):
+        provider = TestProvider()
+        provider.get_search_results = lambda opt_dict: opt_dict
+        self.assertEqual(search(mime_type='mp3', provider=provider),
+                         {'mt': 'mp3', 'genre': 'Top500'})
+
+    dummy_result = [{'br': 128, 'lc':10, 'name':'TestStation1',
+                     'genre': 'Dub', 'ct':'foo'},
+                    {'br': 256, 'lc':15, 'name':'TestStation2',
+                     'genre': 'Country', 'ct':'bar'},
+                    {'br': 64, 'lc':35, 'name':'TestStation3',
+                     'genre': 'Classic', 'ct':'foobar'},
+                     ]
+
+    def test_filter_station(self):
+        result =filter_results(self.dummy_result, station=['TestStation1'])
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]['name'], 'TestStation1')
+
+    def test_filter_genre(self):
+        result =filter_results(self.dummy_result, genre=['Classic'])
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]['name'], 'TestStation3')
+
+    def test_filter_song(self):
+        result =filter_results(self.dummy_result, song=['bar'])
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0]['name'], 'TestStation3')
+
+    def test_filter_limit(self):
+        result =filter_results(self.dummy_result, limit=2)
+        self.assertEqual(len(result), 2)
+
+    def test_filter_sorters(self):
+        sorter = lambda list: sorted(list, key=lambda a: int(a['br']))
+        result =filter_results(self.dummy_result, sorters=[sorter])
+        self.assertEqual(len(result), 3)
+        self.assertEqual(result[0]['name'], 'TestStation3')
+
+    def test_filter_randomize(self):
+        result =filter_results(self.dummy_result, randomize=True)
+        self.assertEqual(len(result), 3)
 
 class ProviderTestCase(TestCase):
 

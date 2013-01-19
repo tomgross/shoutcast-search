@@ -234,9 +234,8 @@ class Shoutcast(Provider):
                       'Chrome/21.0.1200.0 Iron/21.0.1200.0 Safari/537.1')}
 
 
-def search(search=[], station=[], genre=[], song=[],
-           bitrate_fn=lambda x: True, listeners_fn=lambda x: True,
-           mime_type='', limit=0, randomize=False, sorters=[], provider=None):
+def search(search=[], station=[], genre=[], song=[], mime_type='',
+           provider=None):
     ''' Search shoutcast.com for streams with given criteria.
 
     See http://forums.winamp.com/showthread.php?threadid=295638 for details
@@ -292,6 +291,12 @@ def search(search=[], station=[], genre=[], song=[],
                         if row['id'] not in known_ids]
             known_ids = [row['id'] for row in results]
 
+    return results
+
+def filter_results(results, search=[], station=[], genre=[], song=[],
+                   bitrate_fn=lambda x: True, listeners_fn=lambda x: True,
+                   mime_type='', limit=0, randomize=False, sorters=[]):
+    keywords = search + station + genre + song
     # Filter for bitrate
     results = [r for r in results if bitrate_fn(r['br'])]
     # Filter by listeners
@@ -309,7 +314,6 @@ def search(search=[], station=[], genre=[], song=[],
         results = [r for r in results
                    if k.upper() in '{0} {1} {2}'.format(r['name'], r['genre'],
                                                         r['ct']).upper()]
-
     if randomize:
         random.shuffle(results)
     else:
@@ -459,9 +463,11 @@ def main(provider):
             print('   Format: {0}'.format(p_format))
             print('')
 
-        results = search(p_keywords, p_station, p_genre, p_song, p_bitrate,
-                         p_listeners, p_mime_type, p_limit, p_random, sorters,
+        results = search(p_keywords, p_station, p_genre, p_song, p_mime_type,
                          provider)
+        results = filter_results(results, p_keywords, p_station, p_genre,
+                                 p_song, p_bitrate, p_listeners, p_mime_type,
+                                 p_limit, p_random, sorters)
 
         print('\n'.join(provider.station_text(el, p_format) for el in results))
         if p_verbose:
