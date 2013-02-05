@@ -329,7 +329,8 @@ def filter_results(results, search=[], station=[], genre=[], song=[],
     return results
 
 
-def main(provider):
+def main():
+    provider = Shoutcast()
     o = argparse.ArgumentParser(description=get_egg_description())
     o.add_argument('keywords', nargs='*', action='store',
                    help='Keywords to search')
@@ -481,5 +482,4 @@ def main(provider):
 
 
 if __name__ == '__main__':  # pragma: no cover
-    provider = Shoutcast()
-    main(provider)
+    main()
